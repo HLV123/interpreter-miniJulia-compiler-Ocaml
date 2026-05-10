@@ -1,0 +1,5 @@
+(library
+ (name minijulia_lib)
+ (modules ast lexer parser interpreter)
+ (libraries unix)
+ (wrapped false))

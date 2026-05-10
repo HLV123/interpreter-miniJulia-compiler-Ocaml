@@ -1,0 +1,3 @@
+(executable
+ (name main)
+ (libraries minijulia_lib vm_lib compiler_lib codegen_lib unix))

@@ -1,0 +1,5 @@
+(library
+ (name vm_lib)
+ (modules bytecode vm)
+ (libraries minijulia_lib)
+ (wrapped false))

@@ -1,0 +1,5 @@
+_build/
+*.mjc
+test_output.txt
+data.csv
+output.txt

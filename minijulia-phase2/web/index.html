@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MiniJulia IDE</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg0:#151515;
+  --bg1:#1c1c1c;
+  --bg2:#252525;
+  --bg3:#2e2e2e;
+  --bg4:#383838;
+  --border:#3a3a3a;
+  --border2:#444;
+  --text0:#e8e8e8;
+  --text1:#b0b0b0;
+  --text2:#707070;
+  --accent:#dcb67a;
+  --accent2:#c2956c;
+  --blue:#6caddf;
+  --green:#85c88a;
+  --red:#e06c75;
+  --purple:#c678dd;
+  --teal:#56b6c2;
+  --yellow:#e5c07b;
+  --orange:#d19a66;
+  --sidebar:220px;
+  --header:40px;
+  --tab:36px;
+  --mono:'JetBrains Mono','Fira Code','Cascadia Code','Consolas',monospace;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--text0);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px}
+
+/* ── HEADER ── */
+.header{
+  height:var(--header);display:flex;align-items:center;
+  background:var(--bg1);border-bottom:1px solid var(--border);
+  padding:0 12px;gap:8px;flex-shrink:0;user-select:none;
+}
+.logo{display:flex;align-items:center;gap:8px;font-weight:600;font-size:13px;color:var(--text0)}
+.logo-icon{width:20px;height:20px;background:var(--accent);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#151515;font-family:var(--mono)}
+.header-sep{width:1px;height:20px;background:var(--border);margin:0 4px}
+.header-btn{
+  height:26px;padding:0 10px;border-radius:5px;border:1px solid var(--border2);
+  background:transparent;color:var(--text1);font-size:12px;cursor:pointer;
+  display:flex;align-items:center;gap:5px;transition:all 0.15s;white-space:nowrap;
+}
+.header-btn:hover{background:var(--bg3);color:var(--text0);border-color:var(--border2)}
+.header-btn.run{background:var(--accent);color:#151515;border-color:var(--accent);font-weight:600}
+.header-btn.run:hover{background:var(--accent2);border-color:var(--accent2)}
+.header-btn.run.loading{opacity:0.7;cursor:not-allowed}
+.header-spacer{flex:1}
+.kbd{font-family:var(--mono);font-size:10px;background:var(--bg3);padding:1px 5px;border-radius:3px;border:1px solid var(--border2);color:var(--text2)}
+
+/* ── LAYOUT ── */
+.workspace{display:flex;height:calc(100vh - var(--header));overflow:hidden}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  width:var(--sidebar);flex-shrink:0;
+  background:var(--bg1);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.sidebar-section{padding:8px 0}
+.sidebar-label{
+  font-size:10px;font-weight:600;letter-spacing:0.08em;
+  color:var(--text2);padding:4px 12px 6px;text-transform:uppercase;
+}
+.file-item{
+  display:flex;align-items:center;gap:7px;padding:5px 12px;
+  cursor:pointer;border-radius:0;color:var(--text1);font-size:12.5px;
+  transition:background 0.1s;position:relative;
+}
+.file-item:hover{background:var(--bg3);color:var(--text0)}
+.file-item.active{background:var(--bg3);color:var(--text0)}
+.file-item.active::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--accent);
+}
+.file-icon{font-size:13px;width:14px;text-align:center;flex-shrink:0}
+.file-ext{font-size:10px;color:var(--text2);margin-left:auto}
+
+.sidebar-section2{flex:1;overflow-y:auto;padding:8px 0}
+.sidebar-section2::-webkit-scrollbar{width:4px}
+.sidebar-section2::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+.example-item{
+  display:flex;align-items:center;gap:7px;padding:4px 12px;
+  cursor:pointer;color:var(--text2);font-size:12px;transition:color 0.1s;
+}
+.example-item:hover{color:var(--text0)}
+.example-item:hover .ex-run{opacity:1}
+.ex-run{opacity:0;font-size:10px;color:var(--green);margin-left:auto;transition:opacity 0.1s}
+
+/* ── MAIN AREA ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+
+/* ── TABS ── */
+.tabs{
+  height:var(--tab);display:flex;align-items:flex-end;
+  background:var(--bg1);border-bottom:1px solid var(--border);flex-shrink:0;
+  overflow-x:auto;gap:0;
+}
+.tabs::-webkit-scrollbar{height:0}
+.tab{
+  display:flex;align-items:center;gap:7px;padding:0 14px;height:100%;
+  cursor:pointer;color:var(--text2);font-size:12.5px;font-family:var(--mono);
+  border-right:1px solid var(--border);border-bottom:2px solid transparent;
+  white-space:nowrap;transition:all 0.1s;flex-shrink:0;
+  background:var(--bg1);
+}
+.tab:hover{color:var(--text1);background:var(--bg2)}
+.tab.active{
+  color:var(--text0);background:var(--bg0);
+  border-bottom-color:var(--accent);
+}
+.tab-close{
+  width:16px;height:16px;border-radius:3px;display:flex;align-items:center;
+  justify-content:center;font-size:12px;color:var(--text2);
+  transition:all 0.1s;opacity:0;
+}
+.tab:hover .tab-close{opacity:1}
+.tab-close:hover{background:var(--bg4);color:var(--text0)}
+.tab-new{
+  padding:0 10px;color:var(--text2);cursor:pointer;font-size:16px;
+  display:flex;align-items:center;height:100%;transition:color 0.1s;
+}
+.tab-new:hover{color:var(--text0)}
+
+/* ── EDITOR AREA ── */
+.editor-area{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.editor-wrap{flex:1;display:flex;overflow:hidden;min-height:0;position:relative}
+
+.line-numbers{
+  width:44px;padding:12px 0;background:var(--bg0);
+  color:var(--text2);font-family:var(--mono);font-size:13px;
+  line-height:1.6;text-align:right;padding-right:10px;flex-shrink:0;
+  overflow:hidden;user-select:none;border-right:1px solid var(--border);
+}
+.editor{
+  flex:1;padding:12px 0 12px 12px;background:var(--bg0);
+  font-family:var(--mono);font-size:13px;line-height:1.6;
+  color:var(--text0);border:none;outline:none;resize:none;
+  tab-size:4;overflow-y:auto;overflow-x:auto;white-space:pre;
+  caret-color:var(--accent);
+}
+.editor::-webkit-scrollbar{width:8px;height:8px}
+.editor::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+.editor::-webkit-scrollbar-corner{background:var(--bg0)}
+.editor::selection{background:#dcb67a33}
+
+/* ── STATUS BAR ── */
+.statusbar{
+  height:22px;display:flex;align-items:center;gap:0;
+  background:var(--bg1);border-top:1px solid var(--border);
+  font-size:11px;color:var(--text2);flex-shrink:0;overflow:hidden;
+}
+.status-item{padding:0 12px;display:flex;align-items:center;gap:5px;height:100%;border-right:1px solid var(--border)}
+.status-ok{color:var(--green)}
+.status-err{color:var(--red)}
+.status-run{color:var(--yellow)}
+
+/* ── OUTPUT PANEL ── */
+.output-panel{
+  height:200px;display:flex;flex-direction:column;
+  border-top:1px solid var(--border);flex-shrink:0;
+  background:var(--bg0);
+}
+.panel-tabs{
+  height:32px;display:flex;align-items:center;
+  background:var(--bg1);border-bottom:1px solid var(--border);flex-shrink:0;gap:0;
+}
+.panel-tab{
+  padding:0 14px;height:100%;display:flex;align-items:center;
+  font-size:12px;color:var(--text2);cursor:pointer;border-right:1px solid var(--border);
+  border-bottom:2px solid transparent;transition:all 0.1s;
+}
+.panel-tab:hover{color:var(--text1)}
+.panel-tab.active{color:var(--text0);border-bottom-color:var(--accent);background:var(--bg0)}
+.panel-spacer{flex:1}
+.panel-btn{
+  padding:0 10px;height:100%;display:flex;align-items:center;
+  font-size:11px;color:var(--text2);cursor:pointer;
+  border-left:1px solid var(--border);transition:color 0.1s;gap:4px;
+}
+.panel-btn:hover{color:var(--text0)}
+
+.output-content{flex:1;overflow-y:auto;overflow-x:auto;padding:10px 14px}
+.output-content::-webkit-scrollbar{width:6px;height:6px}
+.output-content::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.output-line{
+  font-family:var(--mono);font-size:12.5px;line-height:1.7;
+  white-space:pre-wrap;word-break:break-all;
+}
+.out-normal{color:var(--text0)}
+.out-error{color:var(--red)}
+.out-info{color:var(--text2);font-style:italic}
+.out-success{color:var(--green)}
+.out-time{color:var(--text2);font-size:11px;margin-top:4px}
+
+/* ── RESIZE HANDLE ── */
+.resize-handle{
+  height:4px;background:transparent;cursor:ns-resize;flex-shrink:0;
+  border-top:1px solid var(--border);transition:background 0.15s;
+}
+.resize-handle:hover{background:var(--accent)}
+
+/* ── WELCOME ── */
+.welcome{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:20px;color:var(--text2);padding:40px;
+}
+.welcome-logo{font-size:48px;font-family:var(--mono);color:var(--accent);font-weight:700;letter-spacing:-2px}
+.welcome-sub{font-size:14px;color:var(--text1)}
+.welcome-tips{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.welcome-tip{font-size:12px;display:flex;align-items:center;gap:8px}
+
+/* ── SPINNER ── */
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{
+  width:12px;height:12px;border:2px solid var(--border2);
+  border-top-color:var(--accent);border-radius:50%;
+  animation:spin 0.7s linear infinite;display:inline-block;
+}
+
+/* ── TOOLTIP ── */
+[data-tip]{position:relative}
+[data-tip]::after{
+  content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);left:50%;
+  transform:translateX(-50%);background:var(--bg4);color:var(--text0);
+  font-size:11px;padding:3px 8px;border-radius:4px;white-space:nowrap;
+  pointer-events:none;opacity:0;transition:opacity 0.15s;z-index:99;
+  border:1px solid var(--border2);
+}
+[data-tip]:hover::after{opacity:1}
+
+/* ── SCROLLBAR global ── */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+</style>
+</head>
+<body>
+
+<h2 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">MiniJulia IDE — browser-based interpreter for Julia-like language</h2>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo">
+    <div class="logo-icon">jl</div>
+    MiniJulia IDE
+  </div>
+  <div class="header-sep"></div>
+  <button class="header-btn" onclick="newFile()" data-tip="New file">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+    New
+  </button>
+  <button class="header-btn" onclick="saveFile()" data-tip="Ctrl+S">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>
+    Save
+  </button>
+  <div class="header-spacer"></div>
+  <span style="font-size:11px;color:var(--text2);display:flex;align-items:center;gap:4px">
+    Run: <span class="kbd">Ctrl+Enter</span>
+  </span>
+  <button class="header-btn run" id="run-btn" onclick="runCode()" data-tip="Run current file">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+    Run
+  </button>
+</div>
+
+<!-- WORKSPACE -->
+<div class="workspace">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Files</div>
+      <div id="file-list"></div>
+    </div>
+    <div class="sidebar-section2">
+      <div class="sidebar-label">Examples</div>
+      <div class="example-item" onclick="loadExample('demo')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-5"/></svg>
+        demo.jl
+        <span class="ex-run">▶ run</span>
+      </div>
+      <div class="example-item" onclick="loadExample('fibonacci')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22C6.5 22 2 17.5 2 12S6.5 2 12 2s10 4.5 10 10-4.5 10-10 10z"/><path d="M12 6v6l4 2"/></svg>
+        fibonacci.jl
+        <span class="ex-run">▶ run</span>
+      </div>
+      <div class="example-item" onclick="loadExample('prime')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/></svg>
+        prime.jl
+        <span class="ex-run">▶ run</span>
+      </div>
+      <div class="example-item" onclick="loadExample('bubble_sort')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        bubble_sort.jl
+        <span class="ex-run">▶ run</span>
+      </div>
+      <div class="example-item" onclick="loadExample('file_io')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+        file_io.jl
+        <span class="ex-run">▶ run</span>
+      </div>
+
+      <div class="sidebar-label" style="margin-top:12px">Quick snippets</div>
+      <div class="example-item" onclick="insertSnippet('hello')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        Hello World
+      </div>
+      <div class="example-item" onclick="insertSnippet('function')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16,18 22,12 16,6"/><polyline points="8,6 2,12 8,18"/></svg>
+        Function template
+      </div>
+      <div class="example-item" onclick="insertSnippet('array')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Array operations
+      </div>
+      <div class="example-item" onclick="insertSnippet('forloop')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1,4 1,10 7,10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+        For loop
+      </div>
+    </div>
+
+    <div style="padding:10px 12px;border-top:1px solid var(--border)">
+      <div style="font-size:11px;color:var(--text2);line-height:1.6">
+        <div style="color:var(--text1);font-weight:500;margin-bottom:4px">MiniJulia 0.1</div>
+        Julia-like interpreter<br>
+        OCaml · mydocker
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- TABS -->
+    <div class="tabs" id="tab-bar"></div>
+
+    <!-- EDITOR AREA -->
+    <div class="editor-area" id="editor-area">
+
+      <!-- WELCOME (shown when no file open) -->
+      <div class="welcome" id="welcome-screen">
+        <div class="welcome-logo">jl</div>
+        <div class="welcome-sub">MiniJulia IDE</div>
+        <div class="welcome-tips">
+          <div class="welcome-tip">
+            <span class="kbd">Ctrl+Enter</span> Run code
+          </div>
+          <div class="welcome-tip">
+            <span class="kbd">Ctrl+S</span> Save file
+          </div>
+          <div class="welcome-tip" style="color:var(--text2)">
+            Click an example on the left to get started
+          </div>
+        </div>
+      </div>
+
+      <!-- EDITOR WRAP (shown when file open) -->
+      <div class="editor-wrap" id="editor-wrap" style="display:none">
+        <div class="line-numbers" id="line-numbers">1</div>
+        <textarea class="editor" id="editor" spellcheck="false"
+          placeholder="# Write MiniJulia code here...&#10;println(&quot;Hello, World!&quot;)"
+          oninput="onEditorInput()" onkeydown="onEditorKey(event)"
+          onscroll="syncScroll()"></textarea>
+      </div>
+    </div>
+
+    <!-- RESIZE HANDLE -->
+    <div class="resize-handle" id="resize-handle" onmousedown="startResize(event)"></div>
+
+    <!-- OUTPUT PANEL -->
+    <div class="output-panel" id="output-panel">
+      <div class="panel-tabs">
+        <div class="panel-tab active" onclick="switchPanel('output', this)">Output</div>
+        <div class="panel-tab" onclick="switchPanel('problems', this)">Problems</div>
+        <div class="panel-spacer"></div>
+        <div class="panel-btn" onclick="clearOutput()" data-tip="Clear">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3,6 5,6 21,6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+          Clear
+        </div>
+        <div class="panel-btn" onclick="copyOutput()" data-tip="Copy output">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          Copy
+        </div>
+        <div class="panel-btn" onclick="togglePanel()" data-tip="Toggle panel">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18,15 12,9 6,15"/></svg>
+        </div>
+      </div>
+      <div class="output-content" id="output-content">
+        <div class="output-line out-info">— Ready. Press Ctrl+Enter or click Run to execute your code. —</div>
+      </div>
+    </div>
+
+    <!-- STATUS BAR -->
+    <div class="statusbar">
+      <div class="status-item" id="status-lang">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
+        MiniJulia
+      </div>
+      <div class="status-item" id="status-cursor">Ln 1, Col 1</div>
+      <div class="status-item" id="status-msg" style="color:var(--text2)">Ready</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const SERVER = 'http://localhost:7777';
+
+const examples = {
+  demo: `# Demo: Kiểu dữ liệu, biến, toán tử\nprintln("=== Kiểu dữ liệu ===")\nx = 42\nf = 3.14\ns = "hello"\nb = true\nprintln("Int:     " * string(x))\nprintln("Float:   " * string(f))\nprintln("String:  " * s)\nprintln("Bool:    " * string(b))\n\nprintln("")\nprintln("=== Toán tử số học ===")\na = 10\nb2 = 3\nprintln(string(a) * " + " * string(b2) * " = " * string(a + b2))\nprintln(string(a) * " * " * string(b2) * " = " * string(a * b2))\nprintln(string(a) * " / " * string(b2) * " = " * string(a / b2))\nprintln(string(a) * " ^ " * string(b2) * " = " * string(a ^ b2))\n\nprintln("")\nprintln("=== Mảng ===")\narr = [10, 20, 30, 40, 50]\nprintln("Mảng: " * string(arr))\npush!(arr, 60)\nprintln("Sau push!: " * string(arr))\n\nprintln("")\nprintln("=== Vòng lặp for ===")\ntotal = 0\nfor n = 1:5\n    total = total + n\n    print(string(n))\n    if n < 5\n        print(" + ")\n    end\nend\nprintln(" = " * string(total))\n\nprintln("")\nprintln("=== Hàm ===")\nfunction greet(name)\n    return "Xin chào, " * name * "!"\nend\nprintln(greet("MiniJulia"))`,
+
+  fibonacci: `# Fibonacci — iterative\nfunction fib(n)\n    if n <= 0\n        return 0\n    end\n    if n == 1\n        return 1\n    end\n    a = 0\n    b = 1\n    k = 2\n    while k <= n\n        t = a + b\n        a = b\n        b = t\n        k = k + 1\n    end\n    return b\nend\n\nprintln("20 số Fibonacci đầu tiên:")\nidx = 0\nwhile idx < 20\n    println("fib(" * string(idx) * ") = " * string(fib(idx)))\n    idx = idx + 1\nend`,
+
+  prime: `# Kiểm tra số nguyên tố\nfunction is_prime(n)\n    if n < 2\n        return false\n    end\n    if n == 2\n        return true\n    end\n    if mod(n, 2) == 0\n        return false\n    end\n    i = 3\n    while i * i <= n\n        if mod(n, i) == 0\n            return false\n        end\n        i = i + 2\n    end\n    return true\nend\n\nprintln("Số nguyên tố từ 1 đến 50:")\nprimes = []\nfor n = 1:50\n    if is_prime(n)\n        push!(primes, n)\n    end\nend\ni = 1\nwhile i <= length(primes)\n    print(string(primes[i]))\n    if i < length(primes)\n        print(", ")\n    end\n    i = i + 1\nend\nprintln("")\nprintln("Tổng: " * string(length(primes)) * " số nguyên tố")`,
+
+  bubble_sort: `# Bubble Sort\nfunction bubble_sort(arr)\n    n = length(arr)\n    i = 1\n    while i <= n\n        j = 1\n        while j <= n - i\n            if arr[j] > arr[j + 1]\n                temp = arr[j]\n                arr[j] = arr[j + 1]\n                arr[j + 1] = temp\n            end\n            j = j + 1\n        end\n        i = i + 1\n    end\n    return arr\nend\n\nfunction print_arr(arr)\n    print("[")\n    i = 1\n    while i <= length(arr)\n        print(string(arr[i]))\n        if i < length(arr)\n            print(", ")\n        end\n        i = i + 1\n    end\n    println("]")\nend\n\narr = [64, 34, 25, 12, 22, 11, 90]\nprint("Trước: "); print_arr(arr)\nbubble_sort(arr)\nprint("Sau:   "); print_arr(arr)`,
+
+  file_io: `# File I/O\nprintln("=== Ghi file ===")\nf = open("test_output.txt", "w")\nwriteln(f, "Xin chào từ MiniJulia!")\nwriteln(f, "Dòng thứ hai")\ni = 1\nwhile i <= 3\n    writeln(f, "Dòng " * string(i) * ": n^2 = " * string(i * i))\n    i = i + 1\nend\nclose(f)\nprintln("Đã ghi file test_output.txt")\n\nprintln("")\nprintln("=== Đọc file ===")\ng = open("test_output.txt", "r")\nline_num = 1\nline = read(g)\nwhile !isnothing(line)\n    println(string(line_num) * ": " * line)\n    line_num = line_num + 1\n    line = read(g)\nend\nclose(g)\nprintln("Done!")`
+};
+
+const snippets = {
+  hello: `println("Hello, World!")`,
+  function: `function my_function(x, y)\n    result = x + y\n    return result\nend\n\nprintln(my_function(3, 4))`,
+  array: `arr = [1, 2, 3, 4, 5]\nprintln("Mảng: " * string(arr))\nprintln("Độ dài: " * string(length(arr)))\npush!(arr, 6)\nprintln("Sau push!: " * string(arr))\n\nfor i = 1:length(arr)\n    println("arr[" * string(i) * "] = " * string(arr[i]))\nend`,
+  forloop: `for i = 1:10\n    if mod(i, 2) == 0\n        println(string(i) * " là số chẵn")\n    else\n        println(string(i) * " là số lẻ")\n    end\nend`
+};
+
+let files = [];
+let activeFile = null;
+let panelVisible = true;
+let panelHeight = 200;
+
+function generateId() {
+  return 'f' + Date.now() + Math.random().toString(36).slice(2, 6);
+}
+
+function newFile(name, content) {
+  const id = generateId();
+  const fname = name || `untitled_${files.length + 1}.jl`;
+  const file = { id, name: fname, content: content || '', saved: true };
+  files.push(file);
+  renderFileList();
+  renderTabs();
+  openFile(id);
+  return id;
+}
+
+function openFile(id) {
+  activeFile = id;
+  const file = files.find(f => f.id === id);
+  if (!file) return;
+  const editor = document.getElementById('editor');
+  const wrap = document.getElementById('editor-wrap');
+  const welcome = document.getElementById('welcome-screen');
+  editor.value = file.content;
+  wrap.style.display = 'flex';
+  welcome.style.display = 'none';
+  updateLineNumbers();
+  renderTabs();
+  renderFileList();
+  editor.focus();
+  updateStatus();
+}
+
+function closeFile(id, e) {
+  if (e) e.stopPropagation();
+  const idx = files.findIndex(f => f.id === id);
+  files.splice(idx, 1);
+  if (activeFile === id) {
+    activeFile = files.length > 0 ? files[Math.max(0, idx - 1)].id : null;
+  }
+  if (!activeFile || files.length === 0) {
+    document.getElementById('editor-wrap').style.display = 'none';
+    document.getElementById('welcome-screen').style.display = 'flex';
+  } else {
+    openFile(activeFile);
+  }
+  renderTabs();
+  renderFileList();
+}
+
+function saveFile() {
+  if (!activeFile) return;
+  const file = files.find(f => f.id === activeFile);
+  if (file) {
+    const editor = document.getElementById('editor');
+    file.content = editor.value;
+    file.saved = true;
+    renderTabs();
+    setStatus('Saved ' + file.name, 'ok');
+  }
+}
+
+function renderTabs() {
+  const bar = document.getElementById('tab-bar');
+  bar.innerHTML = files.map(f => `
+    <div class="tab ${f.id === activeFile ? 'active' : ''}" onclick="openFile('${f.id}')">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--accent);flex-shrink:0"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+      ${escHtml(f.name)}${!f.saved ? '<span style="color:var(--accent);margin-left:2px">•</span>' : ''}
+      <span class="tab-close" onclick="closeFile('${f.id}', event)">×</span>
+    </div>
+  `).join('') + `<div class="tab-new" onclick="newFile()" data-tip="New file">+</div>`;
+}
+
+function renderFileList() {
+  const list = document.getElementById('file-list');
+  list.innerHTML = files.map(f => `
+    <div class="file-item ${f.id === activeFile ? 'active' : ''}" onclick="openFile('${f.id}')">
+      <span class="file-icon" style="color:var(--accent)">◈</span>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(f.name)}</span>
+    </div>
+  `).join('');
+}
+
+function loadExample(name) {
+  const content = examples[name];
+  if (!content) return;
+  const fname = name + '.jl';
+  const existing = files.find(f => f.name === fname);
+  if (existing) { openFile(existing.id); return; }
+  newFile(fname, content);
+}
+
+function insertSnippet(name) {
+  if (!activeFile) newFile();
+  const editor = document.getElementById('editor');
+  const code = snippets[name] || '';
+  const start = editor.selectionStart;
+  const val = editor.value;
+  editor.value = val.slice(0, start) + code + val.slice(editor.selectionEnd);
+  editor.selectionStart = editor.selectionEnd = start + code.length;
+  onEditorInput();
+  editor.focus();
+}
+
+function onEditorInput() {
+  if (!activeFile) return;
+  const editor = document.getElementById('editor');
+  const file = files.find(f => f.id === activeFile);
+  if (file) { file.content = editor.value; file.saved = false; }
+  updateLineNumbers();
+  renderTabs();
+  updateStatus();
+}
+
+function onEditorKey(e) {
+  if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); runCode(); return; }
+  if (e.ctrlKey && e.key === 's') { e.preventDefault(); saveFile(); return; }
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const editor = document.getElementById('editor');
+    const start = editor.selectionStart;
+    const val = editor.value;
+    editor.value = val.slice(0, start) + '    ' + val.slice(editor.selectionEnd);
+    editor.selectionStart = editor.selectionEnd = start + 4;
+    onEditorInput();
+    return;
+  }
+}
+
+function updateLineNumbers() {
+  const editor = document.getElementById('editor');
+  const lines = editor.value.split('\n').length;
+  const nums = document.getElementById('line-numbers');
+  nums.innerHTML = Array.from({length: lines}, (_, i) => i + 1).join('<br>');
+}
+
+function syncScroll() {
+  const editor = document.getElementById('editor');
+  const nums = document.getElementById('line-numbers');
+  nums.scrollTop = editor.scrollTop;
+}
+
+function updateStatus() {
+  const editor = document.getElementById('editor');
+  const val = editor.value;
+  const pos = editor.selectionStart;
+  const lines = val.slice(0, pos).split('\n');
+  const ln = lines.length;
+  const col = lines[lines.length - 1].length + 1;
+  document.getElementById('status-cursor').textContent = `Ln ${ln}, Col ${col}`;
+}
+
+async function runCode() {
+  if (!activeFile) return;
+  saveFile();
+  const editor = document.getElementById('editor');
+  const code = editor.value.trim();
+  if (!code) return;
+
+  const btn = document.getElementById('run-btn');
+  btn.classList.add('loading');
+  btn.innerHTML = '<div class="spinner"></div> Running…';
+  setStatus('Running…', 'run');
+
+  const content = document.getElementById('output-content');
+  content.innerHTML = `<div class="output-line out-info">▶ Running ${files.find(f=>f.id===activeFile)?.name || 'code'}…</div>`;
+
+  const t0 = Date.now();
+  try {
+    const res = await fetch(SERVER + '/run', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({code})
+    });
+    const data = await res.json();
+    const elapsed = ((Date.now() - t0) / 1000).toFixed(2);
+    const isOk = data.status === 'ok';
+    const output = data.output || '';
+
+    let html = '';
+    if (output) {
+      const lines = output.split('\n');
+      lines.forEach(line => {
+        if (line.startsWith('[stderr]')) {
+          html += `<div class="output-line out-error">${escHtml(line)}</div>`;
+        } else {
+          html += `<div class="output-line out-normal">${escHtml(line)}</div>`;
+        }
+      });
+    }
+    html += `<div class="out-time">— Finished in ${elapsed}s —</div>`;
+    content.innerHTML = html;
+    content.scrollTop = content.scrollHeight;
+
+    if (isOk) setStatus(`Done in ${elapsed}s`, 'ok');
+    else setStatus('Error', 'err');
+
+  } catch (err) {
+    content.innerHTML = `
+      <div class="output-line out-error">⚠ Cannot connect to MiniJulia server</div>
+      <div class="output-line out-info" style="margin-top:8px">Make sure the server is running:</div>
+      <div class="output-line out-normal" style="background:var(--bg2);padding:6px 10px;border-radius:4px;margin-top:4px">make server</div>
+      <div class="output-line out-info" style="margin-top:8px">Then open: <span style="color:var(--blue)">http://localhost:7777</span></div>
+    `;
+    setStatus('Server offline', 'err');
+  }
+
+  btn.classList.remove('loading');
+  btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg> Run';
+}
+
+function clearOutput() {
+  document.getElementById('output-content').innerHTML =
+    '<div class="output-line out-info">— Output cleared —</div>';
+}
+
+function copyOutput() {
+  const content = document.getElementById('output-content');
+  const text = content.innerText;
+  navigator.clipboard.writeText(text).then(() => setStatus('Copied!', 'ok'));
+}
+
+function switchPanel(name, el) {
+  document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function togglePanel() {
+  const panel = document.getElementById('output-panel');
+  panelVisible = !panelVisible;
+  panel.style.display = panelVisible ? 'flex' : 'none';
+}
+
+function setStatus(msg, type) {
+  const el = document.getElementById('status-msg');
+  el.textContent = msg;
+  el.className = 'status-item ' + (type === 'ok' ? 'status-ok' : type === 'err' ? 'status-err' : type === 'run' ? 'status-run' : '');
+  if (type === 'ok') setTimeout(() => { el.textContent = 'Ready'; el.className = 'status-item'; }, 3000);
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function startResize(e) {
+  const panel = document.getElementById('output-panel');
+  const start = e.clientY;
+  const startH = panel.offsetHeight;
+  const onMove = ev => {
+    const h = Math.max(60, Math.min(600, startH - (ev.clientY - start)));
+    panel.style.height = h + 'px';
+  };
+  const onUp = () => {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+  };
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}
+
+document.getElementById('editor').addEventListener('click', updateStatus);
+document.getElementById('editor').addEventListener('keyup', updateStatus);
+
+loadExample('demo');
+</script>
+</body>
+</html>

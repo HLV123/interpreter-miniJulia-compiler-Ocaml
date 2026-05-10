@@ -1,0 +1,52 @@
+IMAGE    = minimlc-env:v1
+MYDOCKER = sudo /usr/local/bin/mydocker.real
+SRC      = $(shell pwd)
+RUN      = $(MYDOCKER) run -v $(SRC):/workspace -w /workspace $(IMAGE)
+
+compile:
+	$(RUN) sh -c "cd /workspace && dune build && echo 'Build OK'"
+
+server:
+	@echo "Starting MiniJulia IDE on http://localhost:7777 ..."
+	$(RUN) sh -c "cd /workspace && dune build && ./_build/default/server/server.exe"
+
+run:
+	$(RUN) sh -c "cd /workspace && ./_build/default/bin/main.exe $(FILE) && sync"
+
+run-interp:
+	$(RUN) sh -c "cd /workspace && ./_build/default/bin/main.exe -i $(FILE) && sync"
+
+build:
+	$(RUN) sh -c "cd /workspace && ./_build/default/bin/main.exe build $(FILE) && sync"
+
+build-run: build
+	$(RUN) sh -c "cd /workspace && ./$(basename $(FILE) .jl) && sync"
+
+compile-bc:
+	$(RUN) sh -c "cd /workspace && ./_build/default/bin/main.exe compile $(FILE)"
+
+disasm:
+	$(RUN) sh -c "cd /workspace && ./_build/default/bin/main.exe disasm $(FILE) && sync"
+
+dump-c:
+	$(RUN) sh -c "cd /workspace && ./_build/default/bin/main.exe dump-c $(FILE) && sync"
+
+bench:
+	$(RUN) sh -c "cd /workspace && ./_build/default/bin/main.exe bench $(FILE) && sync"
+
+examples:
+	@for f in demo fibonacci prime bubble_sort file_io; do \
+		echo ""; echo "=== $$f.jl ==="; \
+		$(RUN) sh -c "cd /workspace && ./_build/default/bin/main.exe examples/$$f.jl && sync"; \
+	done
+
+shell:
+	$(MYDOCKER) run -v $(SRC):/workspace -w /workspace $(IMAGE) sh
+
+build-image:
+	$(MYDOCKER) build -t $(IMAGE) .
+
+clean:
+	rm -rf _build *.c *.out examples/*.c examples/*.out examples/*.mjc
+
+.PHONY: compile server run run-interp build build-run compile-bc disasm dump-c bench examples shell build-image clean

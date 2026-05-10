@@ -1,0 +1,5 @@
+Xin chào từ MiniJulia!
+Dòng thứ hai
+Dòng 1: n^2 = 1
+Dòng 2: n^2 = 4
+Dòng 3: n^2 = 9

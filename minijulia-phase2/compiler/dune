@@ -1,0 +1,5 @@
+(library
+ (name compiler_lib)
+ (modules compiler)
+ (libraries minijulia_lib vm_lib)
+ (wrapped false))
